@@ -8,7 +8,7 @@ Writes into web/public/data/:
   meta.json                     when it ran, what loaded
   rotation_W.json / _D.json     the 11 sector ETFs vs SPY (RS-Ratio / RS-Momentum, 20-point tails)
   sectors/<ETF>_W.json / _D.json  the list's stocks of each sector vs that sector's ETF
-  weather.json                  the Market Weather reading + 3 years of SPY closes for its chart
+  weather.json                  the Market Weather reading + 7 years of SPY closes for its chart (1M to 5Y)
   seasonality/index.json        the tickers with monthly history; seasonality/<SYM>.json their monthly closes
 Run: python pulse/build.py   (from the project folder)
 """
@@ -155,7 +155,9 @@ def main() -> int:
                               rates={k: vx.get(k) or [] for k in ("$TNX", "$IRX", "HYG", "IEF", "UUP")})
         res["universe"] = len(st)
         res["computed_at"] = now.isoformat(timespec="seconds")
-        res["spy_bars"] = [[d.isoformat(), round(c, 4)] for d, c in spy]
+        # the chart reaches 5 years with a correct 200-day from its first day: 7 years of SPY (one extra ticker)
+        long_spy = download(["SPY"], "7y", "1d").get("SPY")
+        res["spy_bars"] = [[d.isoformat(), round(c, 2)] for d, c in (closes(long_spy) if long_spy is not None else spy)]
         write("weather.json", clean(res))
         meta["parts"]["weather"] = "ok"
     except Exception as exc:

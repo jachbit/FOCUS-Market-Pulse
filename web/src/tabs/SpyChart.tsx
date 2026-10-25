@@ -1,10 +1,10 @@
-// F.O.C.U.S. Market Weather: SPY daily closes (1M / 3M / 6M / 1Y) with the Bollinger Band (20, 2) and the 50 / 200-day
+// F.O.C.U.S. Market Weather: SPY daily closes (1M / 3M / 6M / 1Y / 2Y / 5Y) with the Bollinger Band (20, 2) and the 50 / 200-day
 // SMAs. The band's middle line IS the 20-day SMA, so it is not drawn twice. Every line is computed over the full history
 // first, then cut to the window, so the 200-day is right from the first visible day.
 import { useMemo } from 'react'
 
-export type SpyRange = '1M' | '3M' | '6M' | '1Y'
-export const SPY_RANGES: Record<SpyRange, number> = { '1M': 21, '3M': 63, '6M': 126, '1Y': 252 }
+export type SpyRange = '1M' | '3M' | '6M' | '1Y' | '2Y' | '5Y'
+export const SPY_RANGES: Record<SpyRange, number> = { '1M': 21, '3M': 63, '6M': 126, '1Y': 252, '2Y': 504, '5Y': 1260 }
 interface Pt { d: string; c: number; up?: number; mid?: number; lo?: number; s50?: number; s200?: number }
 const C = { close: 'var(--text)', bb: 'var(--ind-bb)', sma50: 'var(--ind-sma50)', sma200: 'var(--ind-sma200)' }
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -44,7 +44,10 @@ export function SpyChart({ bars, range, onRange }: { bars: [string, number][]; r
   const step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw) ?? raw
   const ticks: number[] = []
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(v)
-  const months = view.map((p, i) => ({ i, d: p.d })).filter((p, i) => i === 0 || (p.d.slice(5, 7) !== view[i - 1].d.slice(5, 7) && x(i) - x(0) > 70))
+  // month labels; on long ranges every quarter (2Y) or every January (5Y), so the axis stays readable
+  const every = view.length > 600 ? 12 : view.length > 300 ? 3 : 1
+  const months = view.map((p, i) => ({ i, d: p.d })).filter((p, i) => i === 0 || (p.d.slice(5, 7) !== view[i - 1].d.slice(5, 7)
+    && (Number(p.d.slice(5, 7)) - 1) % every === 0 && x(i) - x(0) > 70))
   const last = view[view.length - 1]
   const f = (v: number | undefined) => (v == null ? '—' : v.toFixed(2))
   const key = (label: string, color: string, v: number | undefined, dash?: boolean) => (
@@ -77,7 +80,7 @@ export function SpyChart({ bars, range, onRange }: { bars: [string, number][]; r
         ))}
         {months.map(p => (
           <text key={p.d} x={x(p.i)} y={H - 5} fontSize={12} fontWeight={700} fill="var(--text)" textAnchor={p.i === 0 ? 'start' : 'middle'}>
-            {MON[Number(p.d.slice(5, 7)) - 1]}{p.i === 0 ? ` ${p.d.slice(8)}` : ''}
+            {every === 12 && p.i !== 0 ? p.d.slice(0, 4) : `${MON[Number(p.d.slice(5, 7)) - 1]}${p.i === 0 ? ` ${every > 1 ? `'${p.d.slice(2, 4)}` : p.d.slice(8)}` : every === 3 && p.d.slice(5, 7) === '01' ? ` '${p.d.slice(2, 4)}` : ''}`}
           </text>
         ))}
         {band && <polygon points={band} fill={C.bb} fillOpacity={0.1} stroke="none" />}
@@ -86,7 +89,7 @@ export function SpyChart({ bars, range, onRange }: { bars: [string, number][]; r
         <polyline points={path('mid')} fill="none" stroke={C.bb} strokeWidth={1.3} />
         <polyline points={path('s200')} fill="none" stroke={C.sma200} strokeWidth={2} />
         <polyline points={path('s50')} fill="none" stroke={C.sma50} strokeWidth={1.6} />
-        <polyline points={path('c')} fill="none" stroke={C.close} strokeWidth={2.4} />
+        <polyline points={path('c')} fill="none" stroke={C.close} strokeWidth={view.length > 600 ? 1.6 : 2.4} />
         <circle cx={x(view.length - 1)} cy={y(last.c)} r={4.5} fill={C.close}><title>{`SPY ${last.d}: ${f(last.c)}`}</title></circle>
       </svg>
     </div>

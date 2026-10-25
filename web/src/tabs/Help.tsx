@@ -44,7 +44,7 @@ export function HelpTab() {
             the 10-year minus 3-month curve (inverted = a recession warning), high-yield vs Treasury bonds (falling = big money turning
             cautious, often early) and the dollar.</>,
           <><b>SPY trend &amp; the SPY chart</b>: above or below its 20 / 50 / 200-day averages; the chart shows the Bollinger Band (its middle line
-            is the 20-day average) and the 50 / 200-day. Pick 1M to 1Y; 6M-1Y shows how price sits against the 200-day.</>,
+            is the 20-day average) and the 50 / 200-day. Pick 1M to 5Y; 6M-1Y shows how price sits against the 200-day, 2Y-5Y the bigger cycles.</>,
           <><b>How the score is built</b>: each part's score and weight. <b>Score history</b>: the last 60 sessions.</>,
         ]} />
       </Section>
