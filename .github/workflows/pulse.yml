@@ -1,0 +1,59 @@
+# F.O.C.U.S. Market Pulse (Jachbit 2026): fetch the data (yfinance, no keys), compute Sector Rotation / Seasonality /
+# Market Weather with the Edge Scanner's math, build the site and publish it to GitHub Pages. No secrets are used:
+# the only token is GitHub's own short-lived deploy token.
+name: Build and publish Market Pulse
+
+on:
+  schedule:
+    # about hourly on weekdays, 13:20-21:20 UTC = 9:20 AM-5:20 PM ET in summer (8:20 AM-4:20 PM in winter),
+    # so one run always lands after the 4:00 PM close
+    - cron: "20 13-21 * * 1-5"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install the data job
+        run: pip install -r requirements.txt
+      - name: Fetch and compute (Yahoo Finance via yfinance)
+        run: python pulse/build.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build the site
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
