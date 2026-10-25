@@ -16,6 +16,17 @@ own math and publishes the site to GitHub Pages about hourly in market hours.
   context (level, direction, 1-year percentile, VIX / VIX3M), rates & credit (10-year yield, curve, HYG / IEF, dollar)
   and the sector rotation; the SPY chart with the Bollinger Band (20, 2) and the 50 / 200-day; the score history.
 
+- **Help**: how to read each tab, in plain words.
+
+## Updating it
+| To... | Do |
+|---|---|
+| change the look, the text or a feature | edit `web/src/` (preview with `start.bat`), commit and push: the Action rebuilds the live site in about 2-3 minutes |
+| add or remove tickers | edit `pulse/universe.txt` (one per line) and `pulse/sectors.csv` (ticker, sector ETF), then push |
+| refresh the data now | GitHub: Actions -> "Build and publish Market Pulse" -> Run workflow |
+| change how often it refreshes | the `cron` line in `.github/workflows/pulse.yml` |
+| follow a change to the Edge Scanner's math | copy its `rotation.py` / `market_weather.py` into `pulse/` and push |
+
 ## How it works
 | Part | What |
 |---|---|

@@ -5,11 +5,13 @@ import { etDateText, etTime, useJson, type Meta } from './lib/data'
 import { RotationTab } from './tabs/Rotation'
 import { SeasonalityTab } from './tabs/Seasonality'
 import { WeatherTab } from './tabs/Weather'
+import { HelpTab } from './tabs/Help'
 
 const TABS = [
   { id: 'rotation', label: '◴ Sector Rotation' },
   { id: 'seasonality', label: '▦ Seasonality' },
   { id: 'weather', label: '☀ Market Weather' },
+  { id: 'help', label: '? Help' },
 ] as const
 type TabId = typeof TABS[number]['id']
 const fromHash = (): TabId => (TABS.find(t => `#${t.id}` === window.location.hash)?.id ?? 'rotation')
@@ -59,6 +61,7 @@ export function App() {
         {tab === 'rotation' && <RotationTab />}
         {tab === 'seasonality' && <SeasonalityTab />}
         {tab === 'weather' && <WeatherTab />}
+        {tab === 'help' && <HelpTab />}
       </main>
       <div className="footer">
         Data: Yahoo Finance via yfinance (delayed, may contain errors) · math: the F.O.C.U.S. Edge Scanner · For personal research only, not financial advice.

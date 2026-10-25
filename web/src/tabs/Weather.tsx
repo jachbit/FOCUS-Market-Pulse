@@ -7,6 +7,10 @@ import { SpyChart, type SpyRange } from './SpyChart'
 
 const WEATHER_COLOR: Record<string, string> = { Clear: '#22c55e', Mixed: '#fbbf24', Stormy: '#ef4444' }
 const BAND_COLOR: Record<string, string> = { Calm: '#22c55e', Cautious: '#fbbf24', Fear: '#fb923c', Panic: '#ef4444' }
+// plain words for a general audience (the scanner's own text speaks of its alerts and setups)
+const SIZE_TEXT: Record<string, string> = {
+  Clear: 'Full size; long bias', Mixed: 'Half size; be selective, only the best ideas', Stormy: 'Quarter size or cash; defense first',
+}
 const row = (k: string, v: ReactNode, title?: string) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--text)', padding: '2px 0' }} title={title}>
     <span>{k}</span><span className="mono">{v}</span>
@@ -88,7 +92,7 @@ export function WeatherTab() {
         <div style={{ fontSize: 44, lineHeight: 1 }}>{d.weather.icon}</div>
         <div>
           <div style={{ fontSize: 30, fontWeight: 900, color: wc, lineHeight: 1 }}>{Math.round(d.score)} <span style={{ fontSize: 20 }}>{d.weather.name}</span></div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 4 }}>{d.weather.size}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginTop: 4 }}>{SIZE_TEXT[d.weather.name] ?? d.weather.size}</div>
           <GradeStrip column grades={SCORE_GRADES} active={SCORE_GRADES.find(g => g.key === d.weather?.name)?.name} />
         </div>
         <div style={{ flex: 1, minWidth: 260, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
