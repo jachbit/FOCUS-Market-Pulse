@@ -17,14 +17,37 @@ export function HelpTab() {
     <div style={{ maxWidth: 980 }}>
       <Section title="Getting around">
         <Ul items={[
-          <>Three tabs: <b>Sector Rotation</b>, <b>Seasonality</b> and <b>Market Weather</b>. Each has its own link to share:
-            <span className="mono"> #rotation</span>, <span className="mono">#seasonality</span>, <span className="mono">#weather</span>.</>,
+          <>Three tabs: <b>Market Weather</b>, <b>Sector Rotation</b> and <b>Seasonality</b>. Each has its own link to share:
+            <span className="mono"> #weather</span>, <span className="mono">#rotation</span>, <span className="mono">#seasonality</span>.</>,
           <>The data refreshes <b>about every hour on weekdays</b> (roughly 9:20 AM to 5:20 PM ET, one run after the close). The time of
             the last update is at the top right of the tabs. Prices are <b>delayed</b>: this is a research view, not a trading screen.</>,
           <>Hover over a dot, a bar or a number to see its details.</>,
         ]} />
       </Section>
 
+      <Section title="☀ Market Weather: is the market wind at my back?">
+        <p>One score from 0 to 100, from the S&amp;P 500's trend, how many stocks are joining in, the VIX (fear), rates &amp; credit and the sector rotation.</p>
+        <Sub>The verdict</Sub>
+        <Ul items={[
+          <><span style={{ color: '#22c55e', fontWeight: 900 }}>☀ Clear 70-100</span>: risk-on, normal size, long bias.</>,
+          <><span style={{ color: '#fbbf24', fontWeight: 900 }}>⛅ Mixed 40-69</span>: selective, smaller size, only the best ideas.</>,
+          <><span style={{ color: '#ef4444', fontWeight: 900 }}>⛈ Stormy 0-39</span>: defensive, a quarter size or cash. In a downtrend, avoiding the bad weeks matters more than shorting them.</>,
+          <>Read the <b>warnings</b> under it (a narrow market, weakening credit, an inverted VIX curve) and the <b>options</b> hint.</>,
+        ]} />
+        <Sub>The parts</Sub>
+        <Ul items={[
+          <><b>VIX in context</b>: under 15 Calm, 15-20 Cautious, 20-30 Fear, 30+ Panic. Its <b>direction</b> matters as much as its level (falling = fear easing);
+            the <b>1-year percentile</b> is fairer than a fixed band; <b>VIX / VIX3M</b> above 1 means stress right now.</>,
+          <><b>Breadth</b>: the share of the stock list above its 20 / 50 / 200-day averages (green 60%+, red under 40%), advancers vs decliners,
+            new 52-week highs vs lows. The index near its high with weak breadth = a narrow market led by a few giants.</>,
+          <><b>Rates &amp; credit</b>: the 10-year yield and how fast it moved (+25 bp in 20 sessions is a classic headwind for growth stocks),
+            the 10-year minus 3-month curve (inverted = a recession warning), high-yield vs Treasury bonds (falling = big money turning
+            cautious, often early) and the dollar.</>,
+          <><b>SPY trend &amp; the SPY chart</b>: above or below its 20 / 50 / 200-day averages; the chart shows the Bollinger Band (its middle line
+            is the 20-day average) and the 50 / 200-day. Pick 1M to 1Y; 6M-1Y shows how price sits against the 200-day.</>,
+          <><b>How the score is built</b>: each part's score and weight. <b>Score history</b>: the last 60 sessions.</>,
+        ]} />
+      </Section>
       <Section title="◴ Sector Rotation: where is the money flowing?">
         <p>The 11 SPDR sector ETFs (XLK Technology, XLV Health Care, XLE Energy...) against the S&amp;P 500 (SPY). Each sector gets two scores,
           both centred on <b>100</b>:</p>
@@ -54,7 +77,6 @@ export function HelpTab() {
           <>Our own public approximation of a Relative Rotation Graph: the quadrants usually agree with the well-known charts, the exact values do not.</>,
         ]} />
       </Section>
-
       <Section title="▦ Seasonality: is this month usually kind to it?">
         <p>How a ticker has done in each calendar month over the last 5 to 25 complete years (pick it in <b>Years</b>; 15 is a good default for
           indexes and sectors, 10 often fits a single stock better).</p>
@@ -72,30 +94,6 @@ export function HelpTab() {
           <><b>% up says how reliable the month is</b>; <b>check the worst year</b> before trusting a strong month.</>,
           <><b>A tailwind or headwind, not a signal</b>: use it with Sector Rotation (a Leading sector in a strong month = confluence) and your own analysis.</>,
           <>The list covers the indexes (SPY, QQQ, IWM, DIA), the 11 sector ETFs and about 250 large stocks: type a ticker or pick one.</>,
-        ]} />
-      </Section>
-
-      <Section title="☀ Market Weather: is the market wind at my back?">
-        <p>One score from 0 to 100, from the S&amp;P 500's trend, how many stocks are joining in, the VIX (fear), rates &amp; credit and the sector rotation.</p>
-        <Sub>The verdict</Sub>
-        <Ul items={[
-          <><span style={{ color: '#22c55e', fontWeight: 900 }}>☀ Clear 70-100</span>: risk-on, normal size, long bias.</>,
-          <><span style={{ color: '#fbbf24', fontWeight: 900 }}>⛅ Mixed 40-69</span>: selective, smaller size, only the best ideas.</>,
-          <><span style={{ color: '#ef4444', fontWeight: 900 }}>⛈ Stormy 0-39</span>: defensive, a quarter size or cash. In a downtrend, avoiding the bad weeks matters more than shorting them.</>,
-          <>Read the <b>warnings</b> under it (a narrow market, weakening credit, an inverted VIX curve) and the <b>options</b> hint.</>,
-        ]} />
-        <Sub>The parts</Sub>
-        <Ul items={[
-          <><b>VIX in context</b>: under 15 Calm, 15-20 Cautious, 20-30 Fear, 30+ Panic. Its <b>direction</b> matters as much as its level (falling = fear easing);
-            the <b>1-year percentile</b> is fairer than a fixed band; <b>VIX / VIX3M</b> above 1 means stress right now.</>,
-          <><b>Breadth</b>: the share of the stock list above its 20 / 50 / 200-day averages (green 60%+, red under 40%), advancers vs decliners,
-            new 52-week highs vs lows. The index near its high with weak breadth = a narrow market led by a few giants.</>,
-          <><b>Rates &amp; credit</b>: the 10-year yield and how fast it moved (+25 bp in 20 sessions is a classic headwind for growth stocks),
-            the 10-year minus 3-month curve (inverted = a recession warning), high-yield vs Treasury bonds (falling = big money turning
-            cautious, often early) and the dollar.</>,
-          <><b>SPY trend &amp; the SPY chart</b>: above or below its 20 / 50 / 200-day averages; the chart shows the Bollinger Band (its middle line
-            is the 20-day average) and the 50 / 200-day. Pick 1M to 1Y; 6M-1Y shows how price sits against the 200-day.</>,
-          <><b>How the score is built</b>: each part's score and weight. <b>Score history</b>: the last 60 sessions.</>,
         ]} />
       </Section>
 

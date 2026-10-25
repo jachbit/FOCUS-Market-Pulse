@@ -8,13 +8,13 @@ import { WeatherTab } from './tabs/Weather'
 import { HelpTab } from './tabs/Help'
 
 const TABS = [
+  { id: 'weather', label: '☀ Market Weather' },
   { id: 'rotation', label: '◴ Sector Rotation' },
   { id: 'seasonality', label: '▦ Seasonality' },
-  { id: 'weather', label: '☀ Market Weather' },
   { id: 'help', label: '? Help' },
 ] as const
 type TabId = typeof TABS[number]['id']
-const fromHash = (): TabId => (TABS.find(t => `#${t.id}` === window.location.hash)?.id ?? 'rotation')
+const fromHash = (): TabId => (TABS.find(t => `#${t.id}` === window.location.hash)?.id ?? 'weather')
 
 function EtClock() {
   const [now, setNow] = useState(() => new Date())
@@ -42,7 +42,7 @@ export function App() {
       <div className="header">
         <div>
           <div className="brand">F.<span>O</span>.C.U.S.<sup style={{ fontSize: 12, color: '#fff' }}>&copy;</sup> <span style={{ color: '#fff' }}>— Market Pulse</span></div>
-          <div className="hdr-subtitle">Sector Rotation · Seasonality · Market Weather</div>
+          <div className="hdr-subtitle">Market Weather · Sector Rotation · Seasonality</div>
           <div className="hdr-copy">&copy; 2026 Jachbit. All rights reserved. May not be shared without consent. · <a href="https://linktr.ee/jachbit" target="_blank" rel="noopener">linktr.ee/jachbit</a></div>
         </div>
         <div className="header-center">
