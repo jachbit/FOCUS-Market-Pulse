@@ -4,7 +4,7 @@
 No account, no API keys, no server: a GitHub Action fetches public market data, computes the readings with the scanner's
 own math and publishes the site to GitHub Pages about hourly in market hours.
 
-**Live:** https://jachbit.github.io/FOCUS-Market-Pulse/  (`#weather`, `#rotation`, `#seasonality`, `#help` open a tab directly)
+**Live:** https://jachbit.github.io/FOCUS-Market-Pulse/  (`#weather`, `#rotation`, `#seasonality`, `#seasonality/XOM`, `#universe`, `#help` open a tab directly)
 
 ## The tabs
 - **Market Weather**: one 0-100 score (Clear / Mixed / Stormy) from SPY's trend, the breadth of the stock list, VIX in
@@ -15,13 +15,15 @@ own math and publishes the site to GitHub Pages about hourly in market hours.
   tails of 1-20 points. Double-click a sector (or pick it in View) for its stocks against the sector ETF.
 - **Seasonality**: each calendar month's average, median, % of years up, best and worst year over the last 5-25
   complete years, plus this year so far, for the indexes, the sector ETFs and the stock list (`pulse/universe.txt`).
+- **Universe**: every ticker followed (indexes, sector ETFs, stocks) with its sector, last close and day's change; click one
+  for its Seasonality. **✎ Add or remove tickers** (owner) opens the list in GitHub's editor; **💡 Suggest a ticker** (group).
 - **Help**: how to read each tab, in plain words.
 
 ## Updating it
 | To... | Do |
 |---|---|
 | change the look, the text or a feature | edit `web/src/` (preview with `start.bat`), commit and push: the Action rebuilds the live site in about 2-3 minutes |
-| add or remove tickers | edit `pulse/universe.txt` (one per line) and `pulse/sectors.csv` (ticker, sector ETF), then push |
+| add or remove tickers | Universe tab -> ✎ Add or remove tickers (or edit `pulse/universe.txt`): one per line, Commit changes; a new stock's sector is looked up on Yahoo (or set it in `pulse/sectors.csv`) |
 | refresh the data now | GitHub: Actions -> "Build and publish Market Pulse" -> Run workflow |
 | change how often it refreshes | the `cron` line in `.github/workflows/pulse.yml` |
 | follow a change to the Edge Scanner's math | copy its `rotation.py` / `market_weather.py` into `pulse/` and push |

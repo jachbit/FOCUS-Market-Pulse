@@ -10,6 +10,9 @@ Writes into web/public/data/:
   sectors/<ETF>_W.json / _D.json  the list's stocks of each sector vs that sector's ETF
   weather.json                  the Market Weather reading + 7 years of SPY closes for its chart (1M to 5Y)
   seasonality/index.json        the tickers with monthly history; seasonality/<SYM>.json their monthly closes
+  universe.json                 every ticker followed: group, sector ETF, last close, day's change, found or not
+Adding a ticker: one line in pulse/universe.txt (GitHub's web editor is enough); its sector ETF comes from
+pulse/sectors.csv, or is looked up on Yahoo when the ticker is not there.
 Run: python pulse/build.py   (from the project folder)
 """
 from __future__ import annotations
@@ -28,7 +31,7 @@ import yfinance as yf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from market_weather import compute as weather_compute  # noqa: E402
-from rotation import SECTOR_ETFS, rotation  # noqa: E402
+from rotation import SECTOR_ETFS, YAHOO_SECTOR_ETF, rotation  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parent / "web" / "public" / "data"
@@ -47,6 +50,20 @@ def universe() -> list[str]:
 def sector_map() -> dict[str, str]:
     with open(HERE / "sectors.csv", encoding="utf-8") as f:
         return {r["symbol"].upper(): r["sector_etf"].upper() for r in csv.DictReader(f)}
+
+
+def lookup_sectors(tickers: list[str]) -> dict[str, str]:
+    """Sector ETF for tickers missing from sectors.csv (new names added to universe.txt): Yahoo's sector -> the SPDR ETF."""
+    out: dict[str, str] = {}
+    for t in tickers:
+        try:
+            sec = (yf.Ticker(t.replace(".", "-")).info or {}).get("sector")
+        except Exception:
+            sec = None
+        if sec and YAHOO_SECTOR_ETF.get(sec):
+            out[t] = YAHOO_SECTOR_ETF[sec]
+        time.sleep(0.3)
+    return out
 
 
 def download(tickers: list[str], period: str, interval: str) -> dict[str, pd.DataFrame]:
@@ -115,6 +132,11 @@ def main() -> int:
     print(f"F.O.C.U.S. Market Pulse: {len(stocks)} stocks, {len(sectors)} sectors", flush=True)
     daily = download(["SPY", *INDEXES, *sectors, *stocks, *YAHOO.values()], "3y", "1d")
     print(f"  daily: {len(daily)} tickers", flush=True)
+    missing_sector = [s for s in stocks if s not in smap and s in daily]
+    if missing_sector:
+        found = lookup_sectors(missing_sector)
+        smap.update(found)
+        print(f"  sectors looked up for {len(missing_sector)} new tickers: {found}", flush=True)
     meta = {"built": now.isoformat(timespec="seconds"), "source": "Yahoo Finance via yfinance (delayed, unofficial)",
             "stocks": len(stocks), "daily_loaded": len(daily), "parts": {}}
 
@@ -185,6 +207,22 @@ def main() -> int:
         meta["parts"]["seasonality"] = f"failed: {exc}"
         print(f"  seasonality failed: {exc}", flush=True)
 
+    # ── Universe: the list itself, for the Universe tab ──
+    def last(sym: str) -> tuple:
+        df = daily.get(sym)
+        if df is None or len(df) < 2:
+            return None, None
+        c0, c1 = float(df["Close"].iloc[-2]), float(df["Close"].iloc[-1])
+        return round(c1, 2), round((c1 / c0 - 1) * 100, 2) if c0 else None
+
+    rows = []
+    for s, g in [*[(s, "Index") for s in INDEXES], *[(s, "Sector") for s in sectors], *[(s, "Stock") for s in stocks]]:
+        close, chg = last(s)
+        etf = s if g == "Sector" else smap.get(s) if g == "Stock" else None
+        rows.append({"s": s, "g": g, "etf": etf, "sector": SECTOR_ETFS.get(etf or "", ""), "name": INDEXES.get(s) or SECTOR_ETFS.get(s) or "",
+                     "close": close, "chg": chg, "ok": s in daily})
+    write("universe.json", clean({"rows": rows, "not_found": [r["s"] for r in rows if not r["ok"]],
+                                  "counts": {"Index": len(INDEXES), "Sector": len(sectors), "Stock": len(stocks)}}))
     meta["seconds"] = round(time.time() - t0, 1)
     write("meta.json", meta)
     print(f"  done in {meta['seconds']} s: {meta['parts']}", flush=True)

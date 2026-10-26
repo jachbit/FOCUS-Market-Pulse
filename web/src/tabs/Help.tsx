@@ -17,8 +17,9 @@ export function HelpTab() {
     <div style={{ maxWidth: 980 }}>
       <Section title="Getting around">
         <Ul items={[
-          <>Three tabs: <b>Market Weather</b>, <b>Sector Rotation</b> and <b>Seasonality</b>. Each has its own link to share:
-            <span className="mono"> #weather</span>, <span className="mono">#rotation</span>, <span className="mono">#seasonality</span>.</>,
+          <>Tabs: <b>Market Weather</b>, <b>Sector Rotation</b>, <b>Seasonality</b> and the <b>Universe</b> (the list of tickers). Each has its own
+            link to share: <span className="mono"> #weather</span>, <span className="mono">#rotation</span>, <span className="mono">#seasonality</span>
+            (or <span className="mono">#seasonality/XOM</span> for one ticker), <span className="mono">#universe</span>.</>,
           <>The data refreshes <b>about every hour on weekdays</b> (roughly 9:20 AM to 5:20 PM ET, one run after the close). The time of
             the last update is at the top right of the tabs. Prices are <b>delayed</b>: this is a research view, not a trading screen.</>,
           <>Hover over a dot, a bar or a number to see its details.</>,
@@ -94,6 +95,16 @@ export function HelpTab() {
           <><b>% up says how reliable the month is</b>; <b>check the worst year</b> before trusting a strong month.</>,
           <><b>A tailwind or headwind, not a signal</b>: use it with Sector Rotation (a Leading sector in a strong month = confluence) and your own analysis.</>,
           <>The list covers the indexes (SPY, QQQ, IWM, DIA), the 11 sector ETFs and about 250 large stocks: type a ticker or pick one.</>,
+        ]} />
+      </Section>
+
+      <Section title="📋 Universe: what the site follows, and adding names">
+        <Ul items={[
+          <>The full list: the indexes, the 11 sector ETFs and the stocks, with each stock's sector, last close and day's change. Search,
+            filter, sort, and click a ticker to open its Seasonality. A ticker Yahoo does not recognise shows as <b>not found</b>.</>,
+          <><b>The owner adds or removes names</b> with <b>✎ Add or remove tickers</b>: GitHub's editor opens the list (one ticker per line);
+            <b> Commit changes</b> and the site rebuilds in about 2-3 minutes. A new stock's sector is looked up automatically.</>,
+          <><b>Group members</b> can ask for a name with <b>💡 Suggest a ticker</b> (a free GitHub account is needed).</>,
         ]} />
       </Section>
 

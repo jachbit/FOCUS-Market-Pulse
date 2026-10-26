@@ -10,9 +10,9 @@ import { seasonality } from '../lib/seasonality'
 const W = 1000, H = 330, PAD = { l: 52, r: 16, t: 28, b: 34 }
 const pct = (v?: number) => (v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(2)}%`)
 
-export function SeasonalityTab() {
-  const [symbol, setSymbol] = useState('SPY')
-  const [text, setText] = useState('SPY')
+export function SeasonalityTab({ initial = 'SPY' }: { initial?: string }) {
+  const [symbol, setSymbol] = useState(initial)
+  const [text, setText] = useState(initial)
   const [years, setYears] = useState(15)
   const idx = useJson<SeasonIndex>('seasonality/index.json')
   const known = useMemo(() => new Set((idx.data?.symbols ?? []).map(s => s.s)), [idx.data])

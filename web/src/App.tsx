@@ -6,15 +6,19 @@ import { RotationTab } from './tabs/Rotation'
 import { SeasonalityTab } from './tabs/Seasonality'
 import { WeatherTab } from './tabs/Weather'
 import { HelpTab } from './tabs/Help'
+import { UniverseTab } from './tabs/Universe'
 
 const TABS = [
   { id: 'weather', label: '☀ Market Weather' },
   { id: 'rotation', label: '◴ Sector Rotation' },
   { id: 'seasonality', label: '▦ Seasonality' },
+  { id: 'universe', label: '📋 Universe' },
   { id: 'help', label: '? Help' },
 ] as const
 type TabId = typeof TABS[number]['id']
-const fromHash = (): TabId => (TABS.find(t => `#${t.id}` === window.location.hash)?.id ?? 'weather')
+// "#seasonality/XOM" opens a tab with an argument (the Universe tab links each ticker to its Seasonality)
+const hashParts = () => window.location.hash.slice(1).split('/')
+const fromHash = (): TabId => (TABS.find(t => t.id === hashParts()[0])?.id ?? 'weather')
 
 function EtClock() {
   const [now, setNow] = useState(() => new Date())
@@ -30,13 +34,14 @@ function EtClock() {
 
 export function App() {
   const [tab, setTab] = useState<TabId>(fromHash)
+  const [arg, setArg] = useState(() => (hashParts()[1] ?? '').toUpperCase())
   const meta = useJson<Meta>('meta.json')
   useEffect(() => {
-    const onHash = () => setTab(fromHash())
+    const onHash = () => { setTab(fromHash()); setArg((hashParts()[1] ?? '').toUpperCase()); window.scrollTo(0, 0) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
-  const pick = (id: TabId) => { setTab(id); window.history.replaceState(null, '', `#${id}`) }
+  const pick = (id: TabId) => { setTab(id); setArg(''); window.history.replaceState(null, '', `#${id}`) }
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div className="header">
@@ -59,7 +64,8 @@ export function App() {
       </div>
       <main style={{ flex: 1 }}>
         {tab === 'rotation' && <RotationTab />}
-        {tab === 'seasonality' && <SeasonalityTab />}
+        {tab === 'seasonality' && <SeasonalityTab key={arg || 'SPY'} initial={arg || 'SPY'} />}
+        {tab === 'universe' && <UniverseTab />}
         {tab === 'weather' && <WeatherTab />}
         {tab === 'help' && <HelpTab />}
       </main>
