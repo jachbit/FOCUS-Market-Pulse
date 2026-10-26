@@ -3,6 +3,7 @@
 // in GitHub's web editor (the site has no server and holds no keys); group members can suggest a ticker.
 import { useMemo, useState } from 'react'
 import { useJson } from '../lib/data'
+import { downloadCsv } from '../lib/pdf'
 
 interface Row { s: string; g: 'Index' | 'Sector' | 'Stock'; etf: string | null; sector: string; name: string; close: number | null; chg: number | null; ok: boolean }
 interface UniversePayload { rows: Row[]; not_found: string[]; counts: Record<string, number> }
@@ -52,6 +53,9 @@ export function UniverseTab() {
           </button>
         ))}
         <span style={{ flex: 1 }} />
+        <button className="btn" disabled={!rows.length} title="Download the list as shown (search / group / sort) as a CSV for Excel"
+          onClick={() => downloadCsv(`Universe${group === 'All' ? '' : `_${group}`}`, ['Ticker', 'Name', 'Group', 'Sector ETF', 'Sector', 'Last close', 'Day %', 'Data'],
+            rows.map(r => [r.s, r.name, r.g === 'Sector' ? 'Sector ETF' : r.g, r.etf ?? '', r.sector, r.close, r.chg, r.ok ? 'loaded' : 'not found']))}>⤓ CSV</button>
         <span className="note">{c ? `${c.Stock} stocks · ${c.Sector} sector ETFs · ${c.Index} indexes` : ''}{rows.length !== (data?.rows.length ?? 0) ? ` · showing ${rows.length}` : ''}</span>
       </div>
       {data && data.not_found.length > 0 && (

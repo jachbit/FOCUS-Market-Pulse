@@ -9,7 +9,7 @@ own math and publishes the site to GitHub Pages about hourly in market hours.
 ## The tabs
 - **Market Weather**: one 0-100 score (Clear / Mixed / Stormy) from SPY's trend, the breadth of the stock list, VIX in
   context (level, direction, 1-year percentile, VIX / VIX3M), rates & credit (10-year yield, curve, HYG / IEF, dollar)
-  and the sector rotation; the SPY chart (1M to 5Y) with the Bollinger Band (20, 2) and the 50 / 200-day; the score history.
+  and the sector rotation; the SPY chart (1M to 5Y) with the Bollinger Band (20, 2) and the 50 / 200-day; the score history; a PDF of the page. The Universe list downloads as CSV.
 - **Sector Rotation**: our own relative rotation graph of the 11 SPDR sector ETFs against SPY (RS-Ratio = 40-period
   z-score of relative strength, RS-Momentum = 20-period z-score of the ratio, both centred on 100), weekly or daily,
   tails of 1-20 points. Double-click a sector (or pick it in View) for its stocks against the sector ETF.

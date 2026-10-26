@@ -9,7 +9,7 @@ interface Pt { d: string; c: number; up?: number; mid?: number; lo?: number; s50
 const C = { close: 'var(--text)', bb: 'var(--ind-bb)', sma50: 'var(--ind-sma50)', sma200: 'var(--ind-sma200)' }
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function series(bars: [string, number][], days: number): Pt[] {
+export function series(bars: [string, number][], days: number): Pt[] {
   const c = bars.map(b => b[1])
   const sma = (i: number, n: number) => (i >= n - 1 ? c.slice(i - n + 1, i + 1).reduce((a, b) => a + b, 0) / n : undefined)
   const start = Math.max(0, bars.length - days)

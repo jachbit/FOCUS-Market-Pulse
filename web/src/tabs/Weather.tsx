@@ -3,7 +3,8 @@
 // chart, how each part scored, and the score over the last 60 sessions.
 import { useState, type ReactNode } from 'react'
 import { etTime, useJson, type WeatherPayload } from '../lib/data'
-import { SpyChart, type SpyRange } from './SpyChart'
+import { SPY_RANGES, SpyChart, series, type SpyRange } from './SpyChart'
+import { downloadReport, type Section } from '../lib/pdf'
 
 const WEATHER_COLOR: Record<string, string> = { Clear: '#22c55e', Mixed: '#fbbf24', Stormy: '#ef4444' }
 const BAND_COLOR: Record<string, string> = { Calm: '#22c55e', Cautious: '#fbbf24', Fear: '#fb923c', Panic: '#ef4444' }
@@ -78,9 +79,73 @@ const VIX_GRADES = [
   { name: 'Fear', range: '20-30', color: '#fb923c' }, { name: 'Panic', range: '30+', color: '#ef4444' },
 ]
 
+/** F.O.C.U.S. Market Weather PDF: the page on one sheet (verdict, VIX, breadth, rates & credit, SPY trend & sectors, the SPY
+ *  chart at the chosen range, how the score is built, the score history), like the Edge Scanner's Market Weather PDF. */
+async function weatherPdf(d: WeatherPayload, range: SpyRange) {
+  const sign = (v: number) => (v > 0 ? '+' : '')
+  const v = d.vix, b = d.breadth, s = d.spy, rt = d.rates
+  const out: Section[] = []
+  const verdict: [string, string][] = [['Score', `${Math.round(d.score ?? 0)} ${d.weather?.name ?? ''}`],
+    ['Size', SIZE_TEXT[d.weather?.name ?? ''] ?? d.weather?.size ?? '—'], ['Options', d.hint ?? '—'],
+    ['As of', `${d.asof ?? '—'}${d.computed_at ? `, updated ${etTime(d.computed_at)}` : ''}`]]
+  ;(d.warnings ?? []).forEach((w, i) => verdict.push([`Warning ${i + 1}`, w]))
+  out.push({ kind: 'kv', title: 'The verdict (70-100 Clear, 40-69 Mixed, under 40 Stormy)', rows: verdict })
+  if (v) {
+    const rows: [string, string][] = [['VIX', `${v.vix} · ${v.band}`], ['vs 10-day average', `${v.dir} (${v.avg10})`], ['1-year percentile', `${v.pctile}%`]]
+    if (v.ratio != null) rows.push(['VIX / VIX3M', `${v.ratio} · ${v.structure ?? ''}`])
+    if (v.vix9d != null) rows.push(['VIX9D', String(v.vix9d)])
+    out.push({ kind: 'kv', title: 'VIX in context (under 15 Calm · 15-20 Cautious · 20-30 Fear · 30+ Panic)', rows, perRow: 3 })
+  }
+  if (b) out.push({ kind: 'kv', title: `Breadth (${b.n} stocks)`, perRow: 3, rows: [
+    ['Above 20-day', `${b.above20}%`], ['Above 50-day', `${b.above50}%`], ['Above 200-day', `${b.above200}%`],
+    ['Advancers / decliners', `${b.adv} / ${b.dec} (${b.advancers}%)`], ['New 52-wk highs / lows', `${b.highs} / ${b.lows}`]] })
+  if (rt) {
+    const rows: [string, string][] = []
+    if (rt.y10 != null) rows.push(['10-year yield', `${rt.y10.toFixed(2)}%`])
+    if (rt.chg20_bp != null) rows.push(['10-year, 20-day change', `${sign(rt.chg20_bp)}${rt.chg20_bp} bp`])
+    if (rt.curve != null) rows.push(['Curve 10Y - 3M', `${sign(rt.curve)}${rt.curve.toFixed(2)}% ${rt.curve < 0 ? '(inverted)' : '(normal)'}`])
+    if (rt.credit_dev != null) rows.push(['Credit HYG / IEF vs 20-day', `${sign(rt.credit_dev)}${rt.credit_dev}%`])
+    if (rt.dollar_chg != null) rows.push(['Dollar (UUP), 20-day', `${sign(rt.dollar_chg)}${rt.dollar_chg}%`])
+    if (d.rates_hint) rows.push(['Hint', d.rates_hint])
+    if (rows.length) out.push({ kind: 'kv', title: 'Rates & credit', rows })
+  }
+  if (s || d.sectors) {
+    const above = (ma: number | null) => (ma == null || !s ? '—' : `${s.close > ma ? 'above' : 'below'} (${ma})`)
+    const rows: [string, string][] = []
+    if (s) {
+      rows.push(['SPY', String(s.close)], ['vs 20-day', above(s.sma20)], ['vs 50-day', above(s.sma50)], ['vs 200-day', above(s.sma200)])
+      if (s.hi252 != null) rows.push(['From 52-wk high', `${(((s.close / s.hi252) - 1) * 100).toFixed(1)}%`])
+    }
+    if (d.sectors) rows.push(['Sectors Leading / Improving', `${d.sectors.good} of ${d.sectors.total}`],
+      ['Leading', d.sectors.leading.join(', ') || '—'], ['Improving', d.sectors.improving.join(', ') || '—'])
+    out.push({ kind: 'kv', title: 'SPY trend & sectors', rows, perRow: 3 })
+  }
+  if (d.spy_bars && d.spy_bars.length > 1) {
+    const view = series(d.spy_bars, SPY_RANGES[range])
+    const col = (k: 'c' | 'up' | 'lo' | 'mid' | 's50' | 's200') => view.map(p => p[k])
+    out.push({ kind: 'lines', title: `SPY · ${range} daily · Bollinger Band (20, 2) · 50 / 200-day`, x: view.map(p => p.d), height: 190, series: [
+      { label: 'BB upper', values: col('up'), color: 'blue', dash: true, width: 0.7 },
+      { label: 'BB mid = 20-day', values: col('mid'), color: 'blue', width: 0.7 },
+      { label: 'BB lower', values: col('lo'), color: 'blue', dash: true, width: 0.7 },
+      { label: '50-day', values: col('s50'), color: 'orange', width: 1.1 },
+      { label: '200-day', values: col('s200'), color: 'green', width: 1.3 },
+      { label: 'SPY', values: col('c'), color: 'navy', width: view.length > 600 ? 1.1 : 1.6 }] })
+  }
+  if (d.components?.length) out.push({ kind: 'note', title: 'How the score is built (each part 0-100, its weight)',
+    text: d.components.map(c => `${c.label} ${c.score == null ? '—' : Math.round(c.score)} (weight ${c.weight})`).join('  ·  ') })
+  if (d.history && d.history.length > 1) out.push({ kind: 'lines', title: `Score, last ${d.history.length} sessions (70+ Clear, under 40 Stormy)`,
+    x: d.history.map(h => h[0]), height: 110, yMin: 0, yMax: 100, series: [
+      { label: 'Clear (70)', values: d.history.map(() => 70), color: 'green', dash: true, width: 0.6 },
+      { label: 'Stormy (40)', values: d.history.map(() => 40), color: 'red', dash: true, width: 0.6 },
+      { label: 'Market Weather score', values: d.history.map(h => h[1]), color: 'navy', width: 1.5 }] })
+  await downloadReport('F.O.C.U.S.© — Market Pulse — Market Weather',
+    `Market Weather ${Math.round(d.score ?? 0)} ${d.weather?.name ?? ''} · as of ${d.asof} · SPY ${range} daily · ${d.universe} stocks`, 'Market_Weather', out)
+}
+
 export function WeatherTab() {
   const { data: d, error } = useJson<WeatherPayload>('weather.json')
-  const [range, setRange] = useState<SpyRange>('3M')
+  const [range, setRange] = useState<SpyRange>('1Y')
+  const [busy, setBusy] = useState(false)
   if (!d) return error ? <div className="empty">Market Weather unavailable: {error}</div> : <div className="empty">Reading the market weather…</div>
   if (d.score == null || !d.weather?.name) return <div className="empty">No market data in this build. {d.error}</div>
   const wc = WEATHER_COLOR[d.weather.name]
@@ -100,8 +165,10 @@ export function WeatherTab() {
           {(d.warnings ?? []).map(w => <div key={w} style={{ color: '#fbbf24', marginTop: 4 }}>⚠ {w}</div>)}
         </div>
       </div>
-      <div className="note">
-        As of {d.asof}{d.computed_at ? <> · <b style={{ color: '#fff' }}>updated {etTime(d.computed_at)}</b> (about hourly in market hours)</> : null} · {d.universe} stocks in the list · 70-100 Clear, 40-70 Mixed, under 40 Stormy
+      <div className="note" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ flex: 1 }}>As of {d.asof}{d.computed_at ? <> · <b style={{ color: '#fff' }}>updated {etTime(d.computed_at)}</b> (about hourly in market hours)</> : null} · {d.universe} stocks in the list · 70-100 Clear, 40-70 Mixed, under 40 Stormy</span>
+        <button className="btn" disabled={busy} title={`Download this page as a PDF (SPY chart at ${range})`}
+          onClick={async () => { setBusy(true); try { await weatherPdf(d, range) } finally { setBusy(false) } }}>{busy ? 'Making PDF…' : '⤓ PDF'}</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: 8 }}>
         {v && (
