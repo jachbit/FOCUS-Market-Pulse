@@ -175,11 +175,19 @@ def compute(stocks: dict[str, list], spy: list[tuple[date, float]], vix: list[tu
             return None
         return float(upto.iloc[-1 - back])
 
+    def last_on(index, d):
+        """The latest date on or before d within 5 days (a history fetched before the open has no row for today)."""
+        if d in index:
+            return d
+        prior = index[index <= d]
+        return prior.max() if len(prior) and (d - prior.max()).days <= 5 else None
+
     def parts_on(d, with_sectors: bool) -> tuple[dict, dict]:
         p: dict[str, Optional[float]] = {k: None for k in WEIGHTS}
         raw: dict = {}
-        if d in sp.index:
-            r = sp.loc[d]
+        sd = last_on(sp.index, d) if not sp.empty else None
+        if sd is not None:
+            r = sp.loc[sd]
             checks = [r["close"] > r[f"sma{n}"] for n in (20, 50, 200) if not math.isnan(r[f"sma{n}"])]
             if checks:
                 p["spy_trend"] = 100 * sum(checks) / len(checks)
@@ -206,13 +214,15 @@ def compute(stocks: dict[str, list], spy: list[tuple[date, float]], vix: list[tu
             raw["vix"] = {"vix": round(v, 2), "avg10": round(avg10, 2), "band": vix_band(v),
                           "pctile": round(100 * float((yr < v).sum()) / len(yr), 0) if len(yr) else None,
                           "dir": "falling" if v < avg10 * 0.97 else "rising" if v > avg10 * 1.03 else "flat"}
-            if d in v3.index and float(v3.loc[d]) > 0:
-                ratio = v / float(v3.loc[d])
+            d3 = last_on(v3.index, d) if not v3.empty else None
+            if d3 is not None and float(v3.loc[d3]) > 0:
+                ratio = v / float(v3.loc[d3])
                 p["term"] = _term_score(ratio)
-                raw["vix"].update(vix3m=round(float(v3.loc[d]), 2), ratio=round(ratio, 3),
+                raw["vix"].update(vix3m=round(float(v3.loc[d3]), 2), ratio=round(ratio, 3),
                                   structure="backwardation (stress now)" if ratio > 1 else "contango (normal)")
-            if d in v9.index:
-                raw["vix"]["vix9d"] = round(float(v9.loc[d]), 2)
+            d9 = last_on(v9.index, d) if not v9.empty else None
+            if d9 is not None:
+                raw["vix"]["vix9d"] = round(float(v9.loc[d9]), 2)
         # rates & credit
         tnx, tnx20, irx = at(rt.get("$TNX"), d), at(rt.get("$TNX"), d, 20), at(rt.get("$IRX"), d)
         if tnx is not None:
