@@ -218,8 +218,9 @@ async function weatherPdf(d: WeatherPayload, range: SpyRange, pc: PutCallPayload
       const b = k === 'total' ? pc.latest_band : k === 'equity' ? pc.equity_band : null
       return [PC_LABEL[k], `${L[k]!.toFixed(2)}${b ? ` ${PC_WORD[b]}` : ''}  ·  ${pcMath(pc, k).replace('→', '->')}${b ? `  ·  ${pcBandMath(L[k], k === 'equity').replace('→', '->')}` : ''}`]
     })
-    rows.push(['Session', `${L.date} (CBOE, published after the close). Display only: not part of the Weather score.`])
-    out.push({ kind: 'kv', title: 'Put / Call ratio, prior session, CBOE (total: over 1.00 Fear · 0.70-1.00 Normal · under 0.70 Complacent; equity: 0.50-0.70 Normal)', rows, perRow: 1 })
+    rows.push(['Bands', 'total: over 1.00 Fear (often contrarian bullish at extremes) · 0.70-1.00 Normal · under 0.70 Complacent; equity only: over 0.70 Fear · 0.50-0.70 Normal · under 0.50 Complacent'],
+      ['Session', `${L.date} (CBOE, published after the close). Display only: not part of the Weather score.`])
+    out.push({ kind: 'kv', title: 'Put / Call ratio, prior session, CBOE (display only, not scored)', rows, perRow: 1 })
   }
   if (pc && pc.history.length > 1) out.push({ kind: 'lines', title: `Put / Call total ratio, last ${pc.history.length} sessions (CBOE)`,
     x: pc.history.map(h => h[0]), height: 110, series: [
