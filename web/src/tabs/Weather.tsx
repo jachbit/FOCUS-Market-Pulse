@@ -1,7 +1,7 @@
 // F.O.C.U.S. Market Weather (from the Edge Scanner window, pulse/market_weather.py): the verdict (score, weather, size,
 // options hint, warnings), VIX in context, breadth of the stock list, rates & credit, SPY trend and sectors with the SPY
 // chart, how each part scored, and the score over the last 60 sessions. Beside them, CBOE's put / call ratio (display only).
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { etTime, useJson, type PcKey, type PutCallPayload, type WeatherPayload } from '../lib/data'
 import { SPY_RANGES, SpyChart, series, type SpyRange } from './SpyChart'
 import { downloadReport, type Section } from '../lib/pdf'
@@ -17,6 +17,8 @@ const row = (k: string, v: ReactNode, title?: string) => (
     <span>{k}</span><span className="mono">{v}</span>
   </div>
 )
+// a second section inside a combined card (VIX + Breadth, Rates + SPY trend): its orange head under a thin rule
+const SUB_HEAD = { marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border-soft)' }
 const pctColor = (v: number | null | undefined) => (v == null ? 'var(--text)' : v >= 60 ? '#22c55e' : v >= 40 ? '#fbbf24' : '#ef4444')
 
 function Bar({ v }: { v: number | null | undefined }) {
@@ -110,14 +112,24 @@ function pcBandMath(v: number | undefined, equity: boolean): string {
 }
 
 function PcTrend({ pts }: { pts: [string, number][] }) {
+  // drawn at the card's real width and a fixed 110 px height, so text stays 12 px and the card does not grow with its width
+  const ref = useRef<HTMLDivElement>(null)
+  const [W, setW] = useState(300)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setW(Math.max(200, Math.round(e.contentRect.width))))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   if (pts.length < 2) return null
-  const W = 300, H = 140, P = { l: 30, r: 6, t: 8, b: 18 }
+  const H = 110, P = { l: 30, r: 6, t: 8, b: 18 }
   const vals = pts.map(p => p[1])
   const lo = Math.min(0.6, ...vals) - 0.05, hi = Math.max(1.1, ...vals) + 0.05
   const x = (i: number) => P.l + (i / (pts.length - 1)) * (W - P.l - P.r)
   const y = (v: number) => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b)
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
+    <div ref={ref}><svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: 'block' }}>
       <rect x={P.l} y={y(hi)} width={W - P.l - P.r} height={y(1) - y(hi)} fill="rgba(239,68,68,.10)" />
       <rect x={P.l} y={y(1)} width={W - P.l - P.r} height={y(0.7) - y(1)} fill="rgba(34,197,94,.08)" />
       <rect x={P.l} y={y(0.7)} width={W - P.l - P.r} height={y(lo) - y(0.7)} fill="rgba(251,191,36,.10)" />
@@ -133,7 +145,7 @@ function PcTrend({ pts }: { pts: [string, number][] }) {
       ))}
       <text x={P.l} y={H - 4} fontSize={12} fontWeight={700} fill="var(--text)">{pts[0][0]}</text>
       <text x={W - P.r} y={H - 4} textAnchor="end" fontSize={12} fontWeight={700} fill="var(--text)">{pts[pts.length - 1][0]}</text>
-    </svg>
+    </svg></div>
   )
 }
 
@@ -278,9 +290,9 @@ export function WeatherTab() {
         <button className="btn" disabled={busy} title={`Download this page as a PDF (SPY chart at ${range})`}
           onClick={async () => { setBusy(true); try { await weatherPdf(d, range, pc) } finally { setBusy(false) } }}>{busy ? 'Making PDF…' : '⤓ PDF'}</button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: 8 }}>
-        {v && (
-          <div className="card">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 8 }}>
+        <div className="card">
+        {v && (<>
             <div className="card-head">VIX in context</div>
             {row('VIX', <span style={{ color: BAND_COLOR[v.band] }}>{v.vix} · {v.band}</span>, 'Under 15 Calm · 15-20 Cautious · 20-30 Fear · over 30 Panic')}
             <div style={{ marginBottom: 6 }}><GradeStrip grades={VIX_GRADES} active={v.band} /></div>
@@ -291,20 +303,18 @@ export function WeatherTab() {
             {v.ratio != null && row('VIX / VIX3M', <span style={{ color: v.ratio > 1 ? '#ef4444' : v.ratio > 0.95 ? '#fbbf24' : '#22c55e' }}>{v.ratio} · {v.structure}</span>,
               'Below 1 = contango (normal); above 1 = backwardation: stress right now, often near panic lows')}
             {v.vix9d != null && row('VIX9D', v.vix9d, '9-day VIX: the nearest-term fear')}
-          </div>
-        )}
-        {b && (
-          <div className="card">
-            <div className="card-head">Breadth ({b.n} stocks{b.asof !== d.asof ? `, ${b.asof}` : ''})</div>
+        </>)}
+        {b && (<>
+            <div className="card-head" style={v ? SUB_HEAD : undefined}>Breadth ({b.n} stocks{b.asof !== d.asof ? `, ${b.asof}` : ''})</div>
             {row('Above 20-day', <span style={{ color: pctColor(b.above20) }}>{b.above20}%</span>)}<Bar v={b.above20} />
             {row('Above 50-day', <span style={{ color: pctColor(b.above50) }}>{b.above50}%</span>)}<Bar v={b.above50} />
             {row('Above 200-day', <span style={{ color: pctColor(b.above200) }}>{b.above200}%</span>)}<Bar v={b.above200} />
             {row('Advancers / decliners', <span style={{ color: pctColor(b.advancers) }}>{b.adv} / {b.dec} ({b.advancers}%)</span>)}
             {row('New 52-wk highs / lows', <span style={{ color: b.highs >= b.lows ? '#22c55e' : '#ef4444' }}>{b.highs} / {b.lows}</span>)}
-          </div>
-        )}
-        {d.rates && (
-          <div className="card">
+        </>)}
+        </div>
+        <div className="card">
+        {d.rates && (<>
             <div className="card-head">Rates & credit</div>
             {d.rates.y10 != null && row('10-year yield', `${d.rates.y10.toFixed(2)}%`, 'The price of money: a fast rise is a headwind for growth / tech, real estate and utilities')}
             {d.rates.chg20_bp != null && row('10-year, 20-day change',
@@ -318,11 +328,8 @@ export function WeatherTab() {
             {d.rates.dollar_chg != null && row('Dollar (UUP), 20-day', <span style={{ color: d.rates.dollar_chg >= 2 ? '#ef4444' : d.rates.dollar_chg <= -1 ? '#22c55e' : 'var(--text)' }}>
               {d.rates.dollar_chg > 0 ? '+' : ''}{d.rates.dollar_chg}%</span>, 'A sharply rising dollar tightens financial conditions')}
             {d.rates_hint && <div style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', marginTop: 4 }}>{d.rates_hint}</div>}
-          </div>
-        )}
-        {pc && <PutCallCard pc={pc} />}
-        <div className="card">
-          <div className="card-head">SPY trend & sectors</div>
+        </>)}
+          <div className="card-head" style={d.rates ? SUB_HEAD : undefined}>SPY trend & sectors</div>
           {s && <>
             {row('SPY', s.close)}
             {row('vs 20-day', tick(s.sma20 == null ? null : s.close > s.sma20), s.sma20 != null ? `20-day ${s.sma20}` : undefined)}
@@ -337,6 +344,7 @@ export function WeatherTab() {
             </div>
           </>}
         </div>
+        {pc && <PutCallCard pc={pc} />}
         {d.spy_bars && d.spy_bars.length > 1 && (
           <div className="card" style={{ gridColumn: '1 / -1', minWidth: 0 }}>
             <div className="card-head">SPY daily · BB (20, 2) · 50 / 200-day</div>
