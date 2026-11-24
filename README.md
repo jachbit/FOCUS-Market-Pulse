@@ -10,6 +10,9 @@ own math and publishes the site to GitHub Pages about hourly in market hours.
 - **Market Weather**: one 0-100 score (Clear / Mixed / Stormy) from SPY's trend, the breadth of the stock list, VIX in
   context (level, direction, 1-year percentile, VIX / VIX3M), rates & credit (10-year yield, curve, HYG / IEF, dollar)
   and the sector rotation; the SPY chart (1M to 5Y) with the Bollinger Band (20, 2) and the 50 / 200-day; the score history; a PDF of the page. The Universe list downloads as CSV.
+  Beside it, **Put / Call ratio** (display only, not part of the score): CBOE's official total, equity, index and SPX
+  ratios of the prior session with the math (puts / calls = ratio), the reading (total: over 1.00 fear, often contrarian
+  bullish at extremes; 0.70-1.00 normal; under 0.70 complacency; equity-only: 0.50-0.70 normal) and the total over the last 20 sessions.
 - **Sector Rotation**: our own relative rotation graph of the 11 SPDR sector ETFs against SPY (RS-Ratio = 40-period
   z-score of relative strength, RS-Momentum = 20-period z-score of the ratio, both centred on 100), weekly or daily,
   tails of 1-20 points. Double-click a sector (or pick it in View) for its stocks against the sector ETF.
@@ -26,13 +29,14 @@ own math and publishes the site to GitHub Pages about hourly in market hours.
 | add or remove tickers | Universe tab -> ✎ Add or remove tickers (or edit `pulse/universe.txt`): one per line, Commit changes; a new stock's sector is looked up on Yahoo (or set it in `pulse/sectors.csv`) |
 | refresh the data now | GitHub: Actions -> "Build and publish Market Pulse" -> Run workflow |
 | change how often it refreshes | the `cron` line in `.github/workflows/pulse.yml` |
-| follow a change to the Edge Scanner's math | copy its `rotation.py` / `market_weather.py` into `pulse/` and push |
+| follow a change to the Edge Scanner's math | copy its `rotation.py` / `market_weather.py` into `pulse/` (and `put_call.py`'s `parse_cboe` / `band`) and push |
 
 ## How it works
 | Part | What |
 |---|---|
 | `pulse/build.py` | the data job: Yahoo Finance via yfinance (no key) -> `web/public/data/*.json` |
 | `pulse/rotation.py`, `pulse/market_weather.py` | the Edge Scanner's math, unchanged |
+| `pulse/put_call.py` | the Edge Scanner's put / call reading (CBOE part only, same bands), from CBOE's free daily file `cdn.cboe.com/data/us/options/market_statistics/daily/<date>_daily_options` (no key) -> `putcall.json` |
 | `pulse/universe.txt`, `pulse/sectors.csv` | the stock list (tickers only) and each stock's sector ETF |
 | `web/` | the site (React + Vite, the Edge Scanner's look); Seasonality is computed in the browser |
 | `.github/workflows/pulse.yml` | the schedule: fetch, compute, build, publish (weekdays about hourly 9:20 AM-5:20 PM ET) |
@@ -44,6 +48,7 @@ own math and publishes the site to GitHub Pages about hourly in market hours.
 ## Notes and limits
 - Data is **delayed** (refreshed about hourly) and comes from Yahoo Finance through yfinance, a free but unofficial
   library: Yahoo can change things, and a run may occasionally fail (the site then keeps the last good build).
+- The put / call ratio is CBOE's, published once a day after the close: during the session it shows the prior session.
 - Yahoo adjusts past prices for dividends, so long averages can differ slightly from a broker's chart.
 - GitHub pauses scheduled workflows in a public repo after 60 days without commits: re-enable it in the Actions tab (or push any change).
 - Rotation is our public approximation of a Relative Rotation Graph, not a copy of any vendor's chart.

@@ -22,6 +22,14 @@ export interface WeatherPayload {
   spy_bars?: [string, number][]
 }
 
+/** pulse/put_call.py: CBOE's official ratios (prior session) + the total over the last 20 sessions. Display only. */
+export type PcKey = 'total' | 'equity' | 'index' | 'spx'
+export interface PutCallPayload {
+  latest: ({ date: string; source: string; volumes: Partial<Record<PcKey, { puts: number; calls: number }>> } & Partial<Record<PcKey, number>>) | null
+  latest_band?: string | null; equity_band?: string | null
+  history: [string, number][]; note: string; computed_at?: string
+}
+
 const cache = new Map<string, Promise<unknown>>()
 export function getJson<T>(path: string): Promise<T> {
   let p = cache.get(path)

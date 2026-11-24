@@ -1,8 +1,8 @@
 // F.O.C.U.S. Market Weather (from the Edge Scanner window, pulse/market_weather.py): the verdict (score, weather, size,
 // options hint, warnings), VIX in context, breadth of the stock list, rates & credit, SPY trend and sectors with the SPY
-// chart, how each part scored, and the score over the last 60 sessions.
+// chart, how each part scored, and the score over the last 60 sessions. Beside them, CBOE's put / call ratio (display only).
 import { useState, type ReactNode } from 'react'
-import { etTime, useJson, type WeatherPayload } from '../lib/data'
+import { etTime, useJson, type PcKey, type PutCallPayload, type WeatherPayload } from '../lib/data'
 import { SPY_RANGES, SpyChart, series, type SpyRange } from './SpyChart'
 import { downloadReport, type Section } from '../lib/pdf'
 
@@ -79,9 +79,101 @@ const VIX_GRADES = [
   { name: 'Fear', range: '20-30', color: '#fb923c' }, { name: 'Panic', range: '30+', color: '#ef4444' },
 ]
 
+// ── Put / Call (pulse/put_call.py, CBOE's daily file): bands as the scanner's band(): total over 1.0 fear, 0.7-1.0 normal,
+// under 0.7 complacent; equity-only over 0.7 fear, 0.5-0.7 normal, under 0.5 complacent. Display only, not scored.
+const PC_COLOR: Record<string, string> = { fear: '#ef4444', normal: '#22c55e', complacent: '#fbbf24' }
+const PC_WORD: Record<string, string> = { fear: 'Fear', normal: 'Normal', complacent: 'Complacent' }
+const PC_TOTAL_GRADES = [
+  { name: 'Complacent', range: 'under 0.70', note: 'heavy call buying', color: '#fbbf24' },
+  { name: 'Normal', range: '0.70-1.00', color: '#22c55e' },
+  { name: 'Fear', range: 'over 1.00', note: 'contrarian bullish at extremes', color: '#ef4444' },
+]
+const PC_EQUITY_GRADES = [
+  { name: 'Complacent', range: 'under 0.50', color: '#fbbf24' }, { name: 'Normal', range: '0.50-0.70', color: '#22c55e' },
+  { name: 'Fear', range: 'over 0.70', color: '#ef4444' },
+]
+const PC_LABEL: Record<PcKey, string> = { total: 'Total', equity: 'Equity only', index: 'Index', spx: 'SPX (SPX + SPXW + SPXO)' }
+const mil = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n))
+/** "puts 7.96M / calls 8.52M = 0.935 -> 0.94" (the volumes from the same CBOE file; CBOE rounds to 2 places). */
+function pcMath(pc: PutCallPayload, k: PcKey): string {
+  const vol = pc.latest?.volumes?.[k], r = pc.latest?.[k]
+  if (!vol || !vol.calls || r == null) return r == null ? '' : `CBOE ${r.toFixed(2)}`
+  return `puts ${mil(vol.puts)} / calls ${mil(vol.calls)} = ${(vol.puts / vol.calls).toFixed(3)} → ${r.toFixed(2)}`
+}
+/** "0.94 is 0.70-1.00 -> Normal" (the scanner's band() thresholds). */
+function pcBandMath(v: number | undefined, equity: boolean): string {
+  if (v == null) return ''
+  const [hi, lo] = equity ? [0.7, 0.5] : [1.0, 0.7]
+  const b = v > hi ? 'fear' : v < lo ? 'complacent' : 'normal'
+  const why = b === 'fear' ? `over ${hi.toFixed(2)}` : b === 'complacent' ? `under ${lo.toFixed(2)}` : `${lo.toFixed(2)}-${hi.toFixed(2)}`
+  return `${v.toFixed(2)} is ${why} → ${PC_WORD[b]}`
+}
+
+function PcTrend({ pts }: { pts: [string, number][] }) {
+  if (pts.length < 2) return null
+  const W = 300, H = 140, P = { l: 30, r: 6, t: 8, b: 18 }
+  const vals = pts.map(p => p[1])
+  const lo = Math.min(0.6, ...vals) - 0.05, hi = Math.max(1.1, ...vals) + 0.05
+  const x = (i: number) => P.l + (i / (pts.length - 1)) * (W - P.l - P.r)
+  const y = (v: number) => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', display: 'block' }}>
+      <rect x={P.l} y={y(hi)} width={W - P.l - P.r} height={y(1) - y(hi)} fill="rgba(239,68,68,.10)" />
+      <rect x={P.l} y={y(1)} width={W - P.l - P.r} height={y(0.7) - y(1)} fill="rgba(34,197,94,.08)" />
+      <rect x={P.l} y={y(0.7)} width={W - P.l - P.r} height={y(lo) - y(0.7)} fill="rgba(251,191,36,.10)" />
+      {[0.7, 1.0].map(v => (
+        <g key={v}>
+          <line x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth={0.8} strokeDasharray="4 3" />
+          <text x={P.l - 5} y={y(v) + 4} textAnchor="end" fontSize={12} fontWeight={700} fill="var(--text)">{v.toFixed(1)}</text>
+        </g>
+      ))}
+      <polyline points={pts.map(([, v], i) => `${x(i)},${y(v)}`).join(' ')} fill="none" stroke="#93c5fd" strokeWidth={2.2} />
+      {pts.map(([d, v], i) => (
+        <circle key={d} cx={x(i)} cy={y(v)} r={i === pts.length - 1 ? 5 : 2.5} fill={PC_COLOR[v > 1 ? 'fear' : v < 0.7 ? 'complacent' : 'normal']}><title>{`${d}: ${v.toFixed(2)}`}</title></circle>
+      ))}
+      <text x={P.l} y={H - 4} fontSize={12} fontWeight={700} fill="var(--text)">{pts[0][0]}</text>
+      <text x={W - P.r} y={H - 4} textAnchor="end" fontSize={12} fontWeight={700} fill="var(--text)">{pts[pts.length - 1][0]}</text>
+    </svg>
+  )
+}
+
+/** CBOE's put / call ratios of the prior session, the math, the bands and a 20-session line of the total. */
+function PutCallCard({ pc }: { pc: PutCallPayload }) {
+  const L = pc.latest
+  return (
+    <div className="card">
+      <div className="card-head">Put / Call ratio · prior session · CBOE</div>
+      {!L ? <div style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>No CBOE daily file in the last 7 days.</div> : <>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+          Session {L.date} · published by CBOE after the close · <span style={{ color: '#fbbf24' }}>display only, not part of the score</span>
+        </div>
+        {(['total', 'equity', 'index', 'spx'] as PcKey[]).filter(k => L[k] != null).map(k => {
+          const b = k === 'total' ? pc.latest_band : k === 'equity' ? pc.equity_band : null
+          return (
+            <div key={k} style={{ padding: '2px 0' }}>
+              {row(PC_LABEL[k], <span style={{ color: b ? PC_COLOR[b] : 'var(--text)' }}>{L[k]!.toFixed(2)}{b ? ` · ${PC_WORD[b]}` : ''}</span>,
+                k === 'index' || k === 'spx' ? 'Index puts are mostly hedges, so these run above 1.0 normally: read the trend, not the level' : undefined)}
+              <div className="mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', paddingLeft: 10 }}>{pcMath(pc, k)}</div>
+              {b && <div className="mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', paddingLeft: 10 }}>{pcBandMath(L[k], k === 'equity')}</div>}
+            </div>
+          )
+        })}
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--orange)', marginTop: 6 }}>Total</div>
+        <GradeStrip grades={PC_TOTAL_GRADES} active={PC_WORD[pc.latest_band ?? '']} />
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--orange)', marginTop: 6 }}>Equity only (runs lower)</div>
+        <GradeStrip grades={PC_EQUITY_GRADES} active={PC_WORD[pc.equity_band ?? '']} />
+      </>}
+      {pc.history.length > 1 && <>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--orange)', marginTop: 8 }}>Total ratio, last {pc.history.length} sessions</div>
+        <PcTrend pts={pc.history} />
+      </>}
+    </div>
+  )
+}
+
 /** F.O.C.U.S. Market Weather PDF: the page on one sheet (verdict, VIX, breadth, rates & credit, SPY trend & sectors, the SPY
  *  chart at the chosen range, how the score is built, the score history), like the Edge Scanner's Market Weather PDF. */
-async function weatherPdf(d: WeatherPayload, range: SpyRange) {
+async function weatherPdf(d: WeatherPayload, range: SpyRange, pc: PutCallPayload | null) {
   const sign = (v: number) => (v > 0 ? '+' : '')
   const v = d.vix, b = d.breadth, s = d.spy, rt = d.rates
   const out: Section[] = []
@@ -120,6 +212,20 @@ async function weatherPdf(d: WeatherPayload, range: SpyRange) {
       ['Leading', d.sectors.leading.join(', ') || '—'], ['Improving', d.sectors.improving.join(', ') || '—'])
     out.push({ kind: 'kv', title: 'SPY trend & sectors', rows, perRow: 3 })
   }
+  if (pc?.latest) {
+    const L = pc.latest
+    const rows: [string, string][] = (['total', 'equity', 'index', 'spx'] as PcKey[]).filter(k => L[k] != null).map(k => {
+      const b = k === 'total' ? pc.latest_band : k === 'equity' ? pc.equity_band : null
+      return [PC_LABEL[k], `${L[k]!.toFixed(2)}${b ? ` ${PC_WORD[b]}` : ''}  ·  ${pcMath(pc, k).replace('→', '->')}${b ? `  ·  ${pcBandMath(L[k], k === 'equity').replace('→', '->')}` : ''}`]
+    })
+    rows.push(['Session', `${L.date} (CBOE, published after the close). Display only: not part of the Weather score.`])
+    out.push({ kind: 'kv', title: 'Put / Call ratio, prior session, CBOE (total: over 1.00 Fear · 0.70-1.00 Normal · under 0.70 Complacent; equity: 0.50-0.70 Normal)', rows, perRow: 1 })
+  }
+  if (pc && pc.history.length > 1) out.push({ kind: 'lines', title: `Put / Call total ratio, last ${pc.history.length} sessions (CBOE)`,
+    x: pc.history.map(h => h[0]), height: 110, series: [
+      { label: 'Fear (1.00)', values: pc.history.map(() => 1), color: 'red', dash: true, width: 0.6 },
+      { label: 'Complacent (0.70)', values: pc.history.map(() => 0.7), color: 'orange', dash: true, width: 0.6 },
+      { label: 'Total put / call', values: pc.history.map(h => h[1]), color: 'navy', width: 1.5 }] })
   if (d.spy_bars && d.spy_bars.length > 1) {
     const view = series(d.spy_bars, SPY_RANGES[range])
     const col = (k: 'c' | 'up' | 'lo' | 'mid' | 's50' | 's200') => view.map(p => p[k])
@@ -144,6 +250,7 @@ async function weatherPdf(d: WeatherPayload, range: SpyRange) {
 
 export function WeatherTab() {
   const { data: d, error } = useJson<WeatherPayload>('weather.json')
+  const { data: pc } = useJson<PutCallPayload>('putcall.json')
   const [range, setRange] = useState<SpyRange>('1Y')
   const [busy, setBusy] = useState(false)
   if (!d) return error ? <div className="empty">Market Weather unavailable: {error}</div> : <div className="empty">Reading the market weather…</div>
@@ -168,7 +275,7 @@ export function WeatherTab() {
       <div className="note" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ flex: 1 }}>As of {d.asof}{d.computed_at ? <> · <b style={{ color: '#fff' }}>updated {etTime(d.computed_at)}</b> (about hourly in market hours)</> : null} · {d.universe} stocks in the list · 70-100 Clear, 40-70 Mixed, under 40 Stormy</span>
         <button className="btn" disabled={busy} title={`Download this page as a PDF (SPY chart at ${range})`}
-          onClick={async () => { setBusy(true); try { await weatherPdf(d, range) } finally { setBusy(false) } }}>{busy ? 'Making PDF…' : '⤓ PDF'}</button>
+          onClick={async () => { setBusy(true); try { await weatherPdf(d, range, pc) } finally { setBusy(false) } }}>{busy ? 'Making PDF…' : '⤓ PDF'}</button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: 8 }}>
         {v && (
@@ -212,6 +319,7 @@ export function WeatherTab() {
             {d.rates_hint && <div style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', marginTop: 4 }}>{d.rates_hint}</div>}
           </div>
         )}
+        {pc && <PutCallCard pc={pc} />}
         <div className="card">
           <div className="card-head">SPY trend & sectors</div>
           {s && <>

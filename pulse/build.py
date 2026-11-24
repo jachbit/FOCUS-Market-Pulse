@@ -9,6 +9,7 @@ Writes into web/public/data/:
   rotation_W.json / _D.json     the 11 sector ETFs vs SPY (RS-Ratio / RS-Momentum, 20-point tails)
   sectors/<ETF>_W.json / _D.json  the list's stocks of each sector vs that sector's ETF
   weather.json                  the Market Weather reading + 7 years of SPY closes for its chart (1M to 5Y)
+  putcall.json                  CBOE's put / call ratios (prior session) + 20 sessions of the total; display only, not scored
   seasonality/index.json        the tickers with monthly history; seasonality/<SYM>.json their monthly closes
   universe.json                 every ticker followed: group, sector ETF, last close, day's change, found or not
 Adding a ticker: one line in pulse/universe.txt (GitHub's web editor is enough); its sector ETF comes from
@@ -31,6 +32,7 @@ import yfinance as yf
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from market_weather import compute as weather_compute  # noqa: E402
+from put_call import collect as put_call_collect  # noqa: E402
 from rotation import SECTOR_ETFS, YAHOO_SECTOR_ETF, rotation  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -185,6 +187,15 @@ def main() -> int:
     except Exception as exc:
         meta["parts"]["weather"] = f"failed: {exc}"
         print(f"  weather failed: {exc}", flush=True)
+
+    # ── Put / Call: CBOE's free daily file (no keys); display only, it never enters the Weather score ──
+    try:
+        pc = put_call_collect(now)
+        write("putcall.json", clean(pc))
+        meta["parts"]["putcall"] = f"ok ({len(pc['history'])} sessions)" if pc["latest"] else "failed: no CBOE file in 7 days"
+    except Exception as exc:
+        meta["parts"]["putcall"] = f"failed: {exc}"
+        print(f"  put/call failed: {exc}", flush=True)
 
     # ── Seasonality: monthly closes (the browser computes the table for 5-25 years) ──
     try:

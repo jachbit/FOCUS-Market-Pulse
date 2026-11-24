@@ -44,6 +44,10 @@ export function HelpTab() {
           <><b>Rates &amp; credit</b>: the 10-year yield and how fast it moved (+25 bp in 20 sessions is a classic headwind for growth stocks),
             the 10-year minus 3-month curve (inverted = a recession warning), high-yield vs Treasury bonds (falling = big money turning
             cautious, often early) and the dollar.</>,
+          <><b>Put / Call ratio</b> (CBOE, the prior session: CBOE publishes it once a day after the close): option puts traded divided by calls,
+            with the math. Total over 1.00 = fear (often contrarian bullish at extremes), 0.70-1.00 normal, under 0.70 complacency; the equity-only
+            ratio runs lower (0.50-0.70 normal); index and SPX ratios sit above 1 because index puts are hedges, so read their trend. The line shows the
+            total over the last 20 sessions. Shown for context only: it does not change the Weather score.</>,
           <><b>SPY trend &amp; the SPY chart</b>: above or below its 20 / 50 / 200-day averages; the chart shows the Bollinger Band (its middle line
             is the 20-day average) and the 50 / 200-day. Pick 1M to 5Y (1Y to start); 6M-1Y shows how price sits against the 200-day, 2Y-5Y the bigger cycles. <b>⤓ PDF</b> saves the whole page, the chart at the range shown, to print or share.</>,
           <><b>How the score is built</b>: each part's score and weight. <b>Score history</b>: the last 60 sessions.</>,
