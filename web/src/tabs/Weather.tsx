@@ -290,7 +290,7 @@ export function WeatherTab() {
         <button className="btn" disabled={busy} title={`Download this page as a PDF (SPY chart at ${range})`}
           onClick={async () => { setBusy(true); try { await weatherPdf(d, range, pc) } finally { setBusy(false) } }}>{busy ? 'Making PDF…' : '⤓ PDF'}</button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(320px, calc((100% - 16px) / 3)), 1fr))', gap: 8 }}>
         <div className="card">
         {v && (<>
             <div className="card-head">VIX in context</div>
@@ -345,6 +345,7 @@ export function WeatherTab() {
           </>}
         </div>
         {pc && <PutCallCard pc={pc} />}
+        {/* at most 3 columns (a third of the width each), wrapping to 2 / 1 under 320 px a card */}
         {d.spy_bars && d.spy_bars.length > 1 && (
           <div className="card" style={{ gridColumn: '1 / -1', minWidth: 0 }}>
             <div className="card-head">SPY daily · BB (20, 2) · 50 / 200-day</div>
